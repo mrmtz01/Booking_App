@@ -2,17 +2,29 @@ import Footer from "../Components/Footer";
 import NavBar from "../Components/NavBar";
 import Carousel from "../Components/Carousel";
 import { useEffect, useState } from "react";
+import { useCallback } from "react";
 const API_URL = "http://localhost:8000/api";
 
 const MyBookings = () => {
+
   const [bookings, setBookings] = useState([]);
   const [guests, setGuests] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const [cancellationStatus, setCancellationStatus] = useState([])
+
   useEffect(() => {
     // carga de datos desde la api
     const fetchData = async () => {
       const response = await fetch(`${API_URL}/bookings`);
       const data = await response.json();
+      
+      const cancellationStatusMap = {};
+      data.forEach((booking) => {
+        cancellationStatusMap[booking.id] = booking.status === "canceled";
+      });
+
+      setCancellationStatus(cancellationStatusMap);
+      
       setBookings(data);
     };
     const fetchRooms = async () => {
@@ -29,6 +41,45 @@ const MyBookings = () => {
     fetchRooms();
     fetchData();
   }, []);
+
+  const handleCancelBooking = useCallback(
+    async (bookingId) => {
+      // Actualiza el estado de la reserva a "cancelled"
+      setCancellationStatus((prevStatus) => ({
+        ...prevStatus,
+        [bookingId]: true,
+      }));
+
+      // Realiza una solicitud DELETE al servidor para cancelar la reserva
+      try {
+        const response = await fetch(`${API_URL}/booking/${bookingId}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: "canceled" }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Error al cancelar la reserva");
+        }
+
+        // Actualiza la lista de reservas después de la cancelación exitosa
+        const updatedBookings = bookings.map((booking) => {
+          if (booking.id === bookingId) {
+            return { ...booking, status: "canceled" };
+          }
+          return booking;
+        });
+
+        setBookings(updatedBookings);
+      } catch (error) {
+        console.error("Error al cancelar la reserva:", error);
+      }
+    },
+
+  );
+
   return (
     <>
       <NavBar />
@@ -66,6 +117,7 @@ const MyBookings = () => {
         </div>
         <div className="p-3 row ">
           {bookings.map((item) => {
+            const isCancelled = cancellationStatus[item.id];
             return (
               <div
                 className="justify-content-center row mt-2 lex space-x-3"
@@ -94,6 +146,15 @@ const MyBookings = () => {
                 <label className="col-1 p-1">
                   {item.payment_type.toUpperCase()}
                 </label>
+                <button 
+                  className="col-1 p-1 rounded text-white"
+                  onClick={() => handleCancelBooking(item.id)}
+                  disabled={isCancelled}
+                  style={{  background: isCancelled ? "gray" : "black",
+                            cursor: isCancelled ? "not-allowed" : "pointer",}}
+                >
+                  {isCancelled ? "Cancelled" : "Cancel"}
+                </button>
               </div>
             );
           })}
