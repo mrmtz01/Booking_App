@@ -1,4 +1,4 @@
-
+import 'react-datepicker/dist/react-datepicker.css';
 import react, {useState} from 'react'
 
 const BookingForm = () => {
@@ -24,6 +24,23 @@ const BookingForm = () => {
     e.preventDefault();
 
     try {
+
+          // Obtener el estado actual de la habitación desde la base de datos
+    const roomResponse = await fetch(`http://localhost:8000/api/rooms/${formData.room_id}`, {
+      method: 'PUT'
+    });
+    const roomData = await roomResponse.json();
+
+    if (!roomResponse.ok) {
+      throw new Error('Error fetching room data');
+    }
+
+    // Verificar si la habitación está disponible
+    if (roomData.status === 'not_available') {
+      alert('Sorry! This room is not available for booking.');
+      return;
+    }
+    
       const response = await fetch('http://localhost:8000/api/bookings', {
         method: 'POST',
         headers: {
@@ -33,9 +50,20 @@ const BookingForm = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Error al crear la reserva');
+        throw new Error('Error at make booking');
       }
 
+      const roomUpdateResponse = await fetch(`http://localhost:8000/api/room/${formData.room_id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'not_available'}),
+      });
+
+      if (!roomUpdateResponse.ok) {
+        throw new Error('Fail updating room status')
+      }
       // Limpiar el formulario después de una reserva exitosa
       setFormData({
         guest_id: '',
@@ -46,17 +74,18 @@ const BookingForm = () => {
         payment_type: '',
       });
 
-      alert('Reserva creada exitosamente.');
+      alert('Booking successfully created.');
     } catch (error) {
-      console.error('Error al crear la reserva:', error);
+      console.error('Error at make booking:', error);
+      alert('Sorry! we cannot process your request, please, sure to fill all fields')
     }
   };
 
   return (
     <>
-      <div className='container bg-gray-200 rounded-xl'>
 
-    <div className="max-w-md mx-auto bg-gray-40 rounded-xl shadow-md overflow-hidden md:max-w-2xl justify-center items-center">
+
+    <div className="bg-gray-100 rounded-xl shadow-md overflow-hidden">
       <div className="md:flex">
         <div className='p-8 w-full'>
           <div className="uppercase tracking-wide text-xl font-semibold mb-1 text-center text-black">
@@ -124,7 +153,6 @@ const BookingForm = () => {
           >
             <option value="">Select status</option>
             <option value="confirmed">Confirmed</option>
-            <option value="canceled">Cancelled</option>
           </select>
         </div>
         <div className="mb-4">
@@ -143,13 +171,13 @@ const BookingForm = () => {
           </select>
         </div>
         <button className='bg-black hover:bg-cyan-800 text-white font-bold py-2 px-3 rounded m-3 w-full focus:outline-none focus:shadow-outline' type='submit'>
-          <i class="fa-solid fa-magnifying-glass fa-beat"></i>
+          <i className="fa-solid fa-magnifying-glass fa-beat"></i>
         </button>
       </form>
     </div>
     </div>
     </div>
-    </div>
+
     </>
   );
 };
