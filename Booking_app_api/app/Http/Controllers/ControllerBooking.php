@@ -26,4 +26,13 @@ public function update(Request $request,string $id){
     $booking->update($request->all());
     return response()->json($booking,200);
 }
+
+public function updateStatus (Request $request, string $id){
+    $booking = Booking::findOrFail($id);
+    $booking->status = "canceled";
+    $booking->save();
+    return response()->json($booking,200);
+}
+
+
 }

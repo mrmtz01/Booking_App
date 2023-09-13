@@ -28,5 +28,13 @@ class ControllerRoom extends Controller
             $room->update($request->all());
             return response()->json($room,200);
         }
-        
+
+    // actualiza el estado de la habitacion de disponible a ocupado
+        public function updateStatus (Request $request, string $id){
+            $room = Room::findOrFail($id);
+            $room->status = "not_available";
+            $room->save();
+            return response()->json($room,200);
+
+        }
 }
